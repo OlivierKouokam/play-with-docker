@@ -1,0 +1,21 @@
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m",
+    "max-file": "3"
+  },
+  "storage-driver": "overlay2",
+  "storage-opts": [
+    "overlay2.override_kernel_check=true"
+  ],
+  "features": {
+    "buildkit": true
+  },
+  "default-address-pools": [
+    {
+      "base": "172.17.0.0/16",
+      "size": 24
+    }
+  ]
+}
