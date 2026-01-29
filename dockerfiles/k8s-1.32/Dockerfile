@@ -25,8 +25,8 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copier le script systemctl customisé
-COPY ./systemctl /usr/bin/systemctl
-RUN chmod +x /usr/bin/systemctl
+COPY ./systemctl /usr/local/bin/systemctl-fake
+RUN chmod +x /usr/local/bin/systemctl-fake
 
 # Configurer les clés GPG et repos pour Kubernetes 1.32
 RUN mkdir -p /etc/apt/keyrings \
@@ -120,7 +120,9 @@ RUN mkdir -p /etc/pki
 WORKDIR /root
 
 # Point d'entrée
-CMD mount --make-shared / && \
+CMD export PATH="/usr/local/bin:$PATH" && \
+    ln -sf /usr/local/bin/systemctl-fake /usr/bin/systemctl && \
+    mount --make-shared / && \
     modprobe overlay 2>/dev/null || true && \
     modprobe br_netfilter 2>/dev/null || true && \
     sysctl --system && \
@@ -128,3 +130,4 @@ CMD mount --make-shared / && \
     systemctl start kubelet && \
     /bin/bash /etc/kubernetes/deploy-k8s.sh && \
     while true; do bash -l; done
+
