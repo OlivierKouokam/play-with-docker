@@ -71,11 +71,11 @@ RUN curl -Lf -o /usr/bin/docker-compose https://github.com/docker/compose/releas
     && chmod +x /usr/bin/docker-compose
 
 # Configurer systemd pour conteneur
-RUN systemctl set-default multi-user.target \
-    && systemctl mask systemd-remount-fs.service \
-    && systemctl mask sys-kernel-config.mount \
-    && systemctl mask sys-kernel-debug.mount \
-    && systemctl mask sys-fs-fuse-connections.mount
+# Mask systemd units sans systemctl (OK au build)
+RUN ln -sf /dev/null /etc/systemd/system/systemd-remount-fs.service \
+ && ln -sf /dev/null /etc/systemd/system/sys-kernel-config.mount \
+ && ln -sf /dev/null /etc/systemd/system/sys-kernel-debug.mount \
+ && ln -sf /dev/null /etc/systemd/system/sys-fs-fuse-connections.mount
 
 # Configurer les modules kernel nécessaires
 RUN echo "overlay" >> /etc/modules-load.d/containerd.conf \
