@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:22.04
 
 # Éviter les prompts interactifs
 ENV DEBIAN_FRONTEND=noninteractive
@@ -40,25 +40,30 @@ RUN apt-get update && apt-get install -y containerd \
     && sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml \
     && rm -rf /var/lib/apt/lists/*
 
+# Lien attendu par certains outils (kubeadm, crictl, scripts legacy)
+RUN mkdir -p /var/run/containerd \
+    && ln -sf /run/containerd/containerd.sock /var/run/containerd/containerd.sock
+
+# Installer crictl (CLI CRI pour containerd)
+RUN CRICTL_VERSION="v1.32.0" \
+    && curl -L https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz \
+    | tar -xz -C /usr/local/bin \
+    && chmod +x /usr/local/bin/crictl
+
+# Configurer crictl pour containerd
+RUN cat <<EOF >/etc/crictl.yaml
+runtime-endpoint: unix:///run/containerd/containerd.sock
+image-endpoint: unix:///run/containerd/containerd.sock
+timeout: 10
+debug: false
+EOF
+
 # Installer Kubernetes 1.32.4
 RUN apt-get update && apt-get install -y \
     kubectl=1.32.4-1.1 \
     kubeadm=1.32.4-1.1 \
     kubelet=1.32.4-1.1 \
     && apt-mark hold kubelet kubeadm kubectl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Installer Docker CE (optionnel, pour compatibilité docker-compose)
-RUN install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
-    && chmod a+r /etc/apt/keyrings/docker.asc \
-    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list \
-    && apt-get update && apt-get install -y \
-    docker-ce \
-    docker-ce-cli \
-    docker-buildx-plugin \
-    docker-compose-plugin \
     && rm -rf /var/lib/apt/lists/*
 
 # Télécharger docker-compose standalone (pour compatibilité)
@@ -89,7 +94,6 @@ COPY ./kubelet.service /etc/systemd/system/kubelet.service
 COPY ./kubelet.env /etc/systemd/system/kubelet.env
 COPY ./wrapkubeadm.sh /usr/local/bin/kubeadm
 COPY ./tokens.csv /etc/pki/tokens.csv
-COPY ./daemon.json /etc/docker/daemon.json
 COPY ./resolv.conf.override /etc/resolv.conf.override
 COPY ./deploy-k8s.sh /etc/kubernetes/deploy-k8s.sh
 
@@ -121,7 +125,6 @@ CMD mount --make-shared / && \
     modprobe br_netfilter 2>/dev/null || true && \
     sysctl --system && \
     systemctl start containerd && \
-    systemctl start docker 2>/dev/null || true && \
     systemctl start kubelet && \
     /bin/bash /etc/kubernetes/deploy-k8s.sh && \
     while true; do bash -l; done
