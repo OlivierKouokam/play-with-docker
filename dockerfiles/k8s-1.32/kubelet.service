@@ -1,0 +1,16 @@
+[Unit]
+Description=kubelet: The Kubernetes Node Agent
+Documentation=https://kubernetes.io/docs/
+Wants=network-online.target
+After=network-online.target containerd.service
+
+[Service]
+Type=notify
+Restart=always
+RestartSec=10
+StartLimitInterval=0
+EnvironmentFile=/etc/systemd/system/kubelet.env
+ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_RUNTIME_ARGS $KUBELET_SYSTEM_PODS_ARGS $KUBELET_NETWORK_ARGS $KUBELET_DNS_ARGS $KUBELET_AUTHZ_ARGS $KUBELET_CGROUP_ARGS $KUBELET_EXTRA_ARGS
+
+[Install]
+WantedBy=multi-user.target
