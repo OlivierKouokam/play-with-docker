@@ -1,4 +1,5 @@
-FROM ubuntu:24.04
+# FROM ubuntu:24.04
+FROM ubuntu:22.04
 
 # Éviter les prompts interactifs
 ENV DEBIAN_FRONTEND=noninteractive
